@@ -1,0 +1,56 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "datakatsudon"
+date: "September 26, 2015"
+output: html_document
+---
+
+#Loading Packages and Datasets:
+```{r, echo=TRUE}
+library(caret)
+library(randomForest)
+set.seed(123)
+trainingset <- read.csv("pml-training.csv")
+testset <- read.csv("pml-testing.csv")
+```
+
+#Cleaning up the Data:
+From the trainingset I read, I created a new dataframe (newaccel) that has accelerometer readings without NA values in the columns:
+```{r, echo=TRUE}
+accel <- trainingset[,c("user_name", colnames(trainingset)[grep("accel", colnames(trainingset))], "classe" )]
+  ##subsetted the user_name column, classe column, and columns that have accelerometer readings
+rmtest <- apply(accel, 2, function(x) length(which(is.na(x))))
+  ##returns the number of NAs in each column
+newaccel <- accel[, c(1,2,4,5,6,7,9,10,11,12,14,15,16,17,19,20,21,22)]
+  ##created a new dataframe that consists of columns that don't have NA values
+
+acceltest <- testset[,c("user_name", colnames(testset)[grep("accel", colnames(testset))])]
+nacceltest <- acceltest[, c(1,2,4,5,6,7,9,10,11,12,14,15,16,17,19,20,21)]
+  ##subsetted same columns as newaccel dataframe, but did not include column 22 (classe)
+  ##as there is no classe column in this dataframe
+```
+
+#Creating the Model:
+I passed the newaccel dataframe through the function train() and passed the cross-validate argument through the trControl argument:
+```{r, echo=TRUE}
+trControl <- trainControl(method="cv", number=5)
+testfit <- train(classe~., data=newaccel, method="rf", trControl=trControl)
+```
+According to the following information taken from my testfit model, the estimate of error rate is 4.65%. This is about one error per 20 observations. 
+```{r, echo=TRUE}
+testfit$finalModel
+```
+
+I predicted the classe letter of observations in my newaccel dataframe (from the training data) based on my model testfit and took a look at the statistics using the confusionMatrix() function:
+```{r, echo=TRUE}
+valpred <- predict(testfit, newaccel)
+valerror <- confusionMatrix(valpred, newaccel$classe)
+valerror
+```
+
+##Prediction Results:
+I applied the model to my nacceltest dataframe that was originally missing the classe column and predicted the classe letter:
+```{r, echo=TRUE}
+finalprediction <- predict(testfit, nacceltest)
+finalprediction
+```
